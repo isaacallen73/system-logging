@@ -167,6 +167,34 @@ Step 'disks' {
             UsedGB = [math]::Round(($_.Size - $_.FreeSpace) / 1GB, 1) } }) 'disks.csv'
 }
 
+Step 'disk health' {
+    # Health status works for anyone; wear/temperature/hours/errors (SMART) need admin.
+    Save (Get-PhysicalDisk | Sort-Object DeviceId | ForEach-Object {
+        $r = $null
+        if ($isAdmin) { try { $r = $_ | Get-StorageReliabilityCounter -ErrorAction Stop } catch {} }
+        [pscustomobject]@{
+            Disk = "$($_.FriendlyName) #$($_.DeviceId)"; MediaType = [string]$_.MediaType; BusType = [string]$_.BusType
+            SizeGB = [math]::Round($_.Size / 1GB); Health = [string]$_.HealthStatus
+            WearPct = if ($r) { $r.Wear } else { '' }; TempC = if ($r) { $r.Temperature } else { '' }
+            TempMaxC = if ($r) { $r.TemperatureMax } else { '' }; PowerOnHours = if ($r) { $r.PowerOnHours } else { '' }
+            ReadErrors = if ($r) { $r.ReadErrorsTotal } else { '' }; WriteErrors = if ($r) { $r.WriteErrorsTotal } else { '' }
+        } }) 'disk_health.csv'
+}
+
+if ($isAdmin) {
+    Step 'boot times' {
+        # Windows logs every boot's duration (Diagnostics-Performance event 100); no reboot needed to read it.
+        # BootMs = power-on to desktop usable; MainPathMs = to the desktop; PostBootMs = settling after login.
+        $ev = @(Get-WinEvent -LogName 'Microsoft-Windows-Diagnostics-Performance/Operational' `
+            -FilterXPath '*[System[EventID=100]]' -MaxEvents 30 -ErrorAction SilentlyContinue)
+        Save ($ev | ForEach-Object {
+            $d = @{}; ([xml]$_.ToXml()).Event.EventData.Data | ForEach-Object { $d[$_.Name] = $_.'#text' }
+            [pscustomobject]@{ Time = $_.TimeCreated.ToString('yyyy-MM-dd HH:mm'); BootMs = $d.BootTime
+                MainPathMs = $d.MainPathBootTime; PostBootMs = $d.BootPostBootTime }
+        } | Sort-Object Time) 'boot_times.csv'
+    }
+}
+
 if (-not $SkipFolderSizes) {
     Step 'folder sizes (slow)' {
         if (-not ('BaselineDirSizer' -as [type])) {

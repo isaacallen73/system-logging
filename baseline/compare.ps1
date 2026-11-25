@@ -72,6 +72,17 @@ if ($sa -and $sb) {
 }
 Side-By-Side 'resources.csv' 'Idle resources (old -> new)'
 Side-By-Side 'disks.csv' 'Disks' 'Drive'
+Side-By-Side 'disk_health.csv' 'Disk health (wear, temperature, errors; admin runs only)' 'Disk'
+
+# Boot times: median of the boots each run could see (the log keeps a rolling history).
+$ba = Load $Old 'boot_times.csv'; $bb = Load $New 'boot_times.csv'
+if ($ba -and $bb) {
+    $median = { param($rows) $v = @($rows | ForEach-Object { [double]$_.BootMs } | Sort-Object)
+        if ($v.Count) { [math]::Round($v[[int][math]::Floor(($v.Count - 1) / 2)] / 1000, 1) } else { '' } }
+    Say "== Boot time (median seconds, power-on to usable desktop)"
+    Say ("  {0} s over {1} boots  ->  {2} s over {3} boots" -f (& $median $ba), $ba.Count, (& $median $bb), $bb.Count)
+    Say
+}
 
 # Processes: compare by name, since IDs change every boot.
 $pa = Load $Old 'processes.csv'; $pb = Load $New 'processes.csv'

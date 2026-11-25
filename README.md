@@ -19,7 +19,8 @@ drivers, listening ports, PATH, updates, disk usage and folder sizes on C:.
 
 Each run writes `data\<COMPUTERNAME>\baseline\<yyyy-MM-dd_HHmm>\*.csv`. The compare lists what
 was added, removed or changed, and which folders grew, and saves the report into the newer run.
-Run it as admin to also capture optional Windows features and read more folders.
+Run it as admin to also capture optional Windows features, SSD wear/temperature/error counters,
+boot durations (read from Windows' own boot log, no reboot needed), and folders a normal user can't read.
 
 **On a new machine:** take a baseline before installing anything, then again after the
 manufacturer's setup, then whenever the machine feels heavier. Also save an Autoruns snapshot
